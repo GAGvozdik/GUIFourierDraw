@@ -11,6 +11,8 @@ from PyQt5.QtWidgets import *
 from scipy.interpolate import splrep, splev
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
+
 import matplotlib.animation as animation
 
 

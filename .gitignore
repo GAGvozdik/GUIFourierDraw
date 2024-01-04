@@ -5,8 +5,8 @@ __pycache__/
 
 # C extensions
 *.so
-test.py
-fourier_drawing.py
+test.py~
+fourier_drawing.py~
 # Distribution / packaging
 .Python
 build/
