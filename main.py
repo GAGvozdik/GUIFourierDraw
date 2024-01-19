@@ -23,16 +23,16 @@ from PyQt5.QtCore import QTimer
 # TODO make choose del points
 # TODO качество gif плохое
 # TODO стили сделай
-# TODO размер стрелок
 
-# TODO подпиши программу сверху
-# TODO раздели по потокам
 # TODO добавь try except везде где можно
-# TODO ставить точки без картинки
 # TODO при наведении на точку меняй ее цвет и позволяй перетащить
 # TODO проверь все кнопки на вылеты
-# TODO
 
+# TODO настрой скорость гифки
+# TODO размер стрелок
+# TODO подпиши программу сверху
+
+# TODO зависает после удачного сохранения гифки
 
 
 class PhotoViewer(QtWidgets.QGraphicsView):
@@ -55,12 +55,21 @@ class PhotoViewer(QtWidgets.QGraphicsView):
         self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255)))
         self.setFrameShape(QtWidgets.QFrame.NoFrame)
 
+        self.plotPointsLabel = QLabel('Load Photo to begin work!!!', self)
+        self.plotPointsLabel.hide()
+        self._scene.addWidget(self.plotPointsLabel)
+
+
+
+
         self.finallist = []
         self.points = []
         self.r = 5
         self.pixmap = None
         # self._scene.setCursor(QtCore.Qt.ArrowCursor)
 
+        self.photochoice = 0
+        self.labelPlotPoints = 0
 
     def hasPhoto(self):
         return not self._empty
@@ -81,6 +90,10 @@ class PhotoViewer(QtWidgets.QGraphicsView):
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def setPhoto(self, pixmap=None):
+        self.photochoice += 1
+        self.plotPointsLabel.hide()
+
+
         items = self._scene.items()  # Получаем список всех элементов на сцене
 
         for i in range(len(items)):
@@ -157,6 +170,9 @@ class PhotoViewer(QtWidgets.QGraphicsView):
             super(PhotoViewer, self).mousePressEvent(event)
 
         if event.button() == QtCore.Qt.LeftButton:
+
+            if self.photochoice == 0:
+                self.plotPointsLabel.show()
 
 
             if self.sceneRect().contains(viewPos) and (viewPos.x(), viewPos.y()) not in self.points:
@@ -357,7 +373,7 @@ class MainWindow(QtWidgets.QWidget):
         self.arrowNumberScrollBar.hide()
 
 
-        self.arrowLabel = QLabel("Line width", self)
+        self.arrowLabel = QLabel("Arrow number", self)
         self.arrowLabel.hide()
 
         scrollBarGroup2 = QGroupBox()
@@ -475,7 +491,7 @@ class MainWindow(QtWidgets.QWidget):
         self.calcTrace()
 
         test = np.sum(np.array(
-            [self.cns[i + self.quantity] * np.exp(-1j * i * self.phis) for i in range(-self.quantity, self.quantity + 1)]), axis=0)
+            [self.cns[i + self.quantity] * np.exp(-1j * i * self.phis) for i in range(1 - self.quantity, self.quantity + 1 - 1)]), axis=0)
 
         self.ax1.plot(np.real(test), np.imag(test), c='lightgrey', linewidth='1.0')
 
@@ -623,7 +639,7 @@ class MainWindow(QtWidgets.QWidget):
         self.calcTrace()
 
         test = np.sum(np.array(
-            [self.cns[i + self.quantity] * np.exp(-1j * i * self.phis) for i in range(-self.quantity, self.quantity + 1)]), axis=0)
+            [self.cns[i + self.quantity] * np.exp(-1j * i * self.phis) for i in range(1 - self.quantity, self.quantity + 1 - 1)]), axis=0)
 
         contour, = self.ax1.plot(np.real(test), np.imag(test), c='lightgrey', linewidth='7.0')
 
@@ -689,14 +705,18 @@ class MainWindow(QtWidgets.QWidget):
         self.progress.setValue(100)
         self.hideProgressBar()
 
-        anim = animation.ArtistAnimation(self.figure, self.images, interval=self.interval, blit=True, repeat_delay=self.repeatDelay)
-
-        self.animS = anim
+        self.animS = animation.ArtistAnimation(
+            self.figure,
+            self.images,
+            interval=self.interval,
+            blit=True,
+            repeat_delay=self.repeatDelay)
 
         self.panel.show()
 
 
     def save_animation(self):
+
 
         self.panel.hide()
 
@@ -704,6 +724,15 @@ class MainWindow(QtWidgets.QWidget):
         file_dialog = QFileDialog.getSaveFileName(self, 'Save Animation', '', 'GIF Files (*.gif)')
         file_path = file_dialog[0]
         if file_path:
+
+
+
+            self.animS = animation.ArtistAnimation(
+                self.figure,
+                self.images,
+                interval=self.interval,
+                blit=True,
+                repeat_delay=self.repeatDelay)
 
             writer = animation.PillowWriter(fps=self.fps)
             self.animS.save(file_path, writer=writer, progress_callback=self.update_progress)
@@ -713,10 +742,21 @@ class MainWindow(QtWidgets.QWidget):
 
         self.panel.show()
 
+        if self.previewCoice != 0:
+            print('ok')
+            self.animS.event_source.stop()
+            self.ax1.clear()
+            self.ax1.set_aspect(1)
+            self.ax1.set_axis_off()
+            print('shit e')
+
+
+
     def update_progress(self, i, n):
 
-        progress = int(( i / (2 * self.number)) * 100)
-        print(i)
+        progress = i
+
+        print(progress)
 
         self.progress.setValue(progress)
 
@@ -735,44 +775,35 @@ class MainWindow(QtWidgets.QWidget):
 
 
         self.viewer.delAllPoints()
+        self.viewer.points = []
         self.viewer.delSplineLine()
 
-        if self.previewCoice != 0:
-            self.animS.event_source.stop()
-            self.ax1.clear()
-            self.ax1.set_aspect(1)
-            self.ax1.set_axis_off()
-
+        # if self.previewCoice != 0:
+        #     self.animS.event_source.stop()
+        #     self.ax1.clear()
+        #     self.ax1.set_aspect(1)
+        #     self.ax1.set_axis_off()
 
         options = QFileDialog.Options()
         file_name = QFileDialog.getOpenFileName(self, "Выберите файл с точками", "", "Точки (*.txt)", options=options)
-        if file_name:
-            file = open(file_name[0], 'r')
 
-            for line in file:
-                self.viewer.points.append((float(line.split(',')[0]), float(line.split(',')[1])))
-            file.close()
+        try:
+            if file_name:
+                file = open(file_name[0], 'r')
+
+                for line in file:
+                    self.viewer.points.append((float(line.split(',')[0]), float(line.split(',')[1])))
+                file.close()
+        except:
+            pass
 
 
 
         self.viewer.update()
 
-        # self.ax1.set_xlim(np.array(self.viewer.points)[:, 0].min(), np.array(self.viewer.points)[:, 0].max())
-        # self.ax1.set_ylim(np.array(self.viewer.points)[:, 1].min(), np.array(self.viewer.points)[:, 1].max())
-
         self.viewer.delSplineLine()
-        self.viewer.plotOnPicture()
 
-        if len(self.viewer.points) > 3:
-            # self.figure.clear()
-            # self.ax1 = self.figure.add_subplot()
-            # self.ax1.set_axis_off()
-            # self.ax1.set_aspect(1)
-            #
-            # self.canvas.figure = self.figure
-            # self.canvas.draw()
-            self.animS=None
-            pass
+        self.viewer.plotOnPicture()
 
         self.viewer.update()
 
